@@ -21,7 +21,7 @@ AUTH_GUIDANCE = (
 class KaggleDatasetApi(Protocol):
     def authenticate(self) -> Any: ...
 
-    def dataset_list_files(self, dataset: str) -> Any: ...
+    def dataset_list_files(self, dataset: str, **kwargs: Any) -> Any: ...
 
     def dataset_download_file(self, dataset: str, file_name: str, **kwargs: Any) -> Any: ...
 
@@ -149,22 +149,78 @@ def _authenticate_api(api: KaggleDatasetApi) -> None:
 
 
 def _list_remote_csv_files(api: KaggleDatasetApi, dataset: str) -> list[str]:
-    response = api.dataset_list_files(dataset)
-    candidates = _coerce_file_entries(response)
-
     csv_files: list[str] = []
     seen: set[str] = set()
-    for candidate in candidates:
-        file_name = _extract_remote_file_name(candidate)
-        if not file_name:
-            continue
-        normalized = _normalize_remote_file_name(file_name)
-        if not normalized.lower().endswith(".csv"):
-            continue
-        if normalized not in seen:
-            seen.add(normalized)
-            csv_files.append(normalized)
+    next_page_token: str | None = None
+    seen_page_tokens: set[str] = set()
+
+    while True:
+        response = _call_dataset_list_files(
+            api=api,
+            dataset=dataset,
+            page_token=next_page_token,
+            page_size=100,
+        )
+        candidates = _coerce_file_entries(response)
+
+        for candidate in candidates:
+            file_name = _extract_remote_file_name(candidate)
+            if not file_name:
+                continue
+            normalized = _normalize_remote_file_name(file_name)
+            if not normalized.lower().endswith(".csv"):
+                continue
+            if normalized not in seen:
+                seen.add(normalized)
+                csv_files.append(normalized)
+
+        next_page_token = _extract_next_page_token(response)
+        if not next_page_token or next_page_token in seen_page_tokens:
+            break
+        seen_page_tokens.add(next_page_token)
+
     return csv_files
+
+
+def _call_dataset_list_files(
+    api: KaggleDatasetApi,
+    dataset: str,
+    page_token: str | None,
+    page_size: int,
+) -> Any:
+    method = api.dataset_list_files
+
+    try:
+        signature = inspect.signature(method)
+    except (TypeError, ValueError):
+        signature = None
+
+    if signature is None:
+        if page_token is not None:
+            return method(dataset)
+        return method(dataset)
+
+    accepted = signature.parameters
+    positional_args: list[Any] = []
+    named_args: dict[str, Any] = {}
+
+    if "dataset" in accepted:
+        named_args["dataset"] = dataset
+    else:
+        positional_args.append(dataset)
+
+    if page_token is not None:
+        for key in ("page_token", "pageToken"):
+            if key in accepted:
+                named_args[key] = page_token
+                break
+
+    for key in ("page_size", "pageSize"):
+        if key in accepted:
+            named_args[key] = page_size
+            break
+
+    return method(*positional_args, **named_args)
 
 
 def _coerce_file_entries(response: Any) -> list[Any]:
@@ -181,6 +237,21 @@ def _coerce_file_entries(response: Any) -> list[Any]:
     if isinstance(files_attr, (list, tuple)):
         return list(files_attr)
     return [files_attr]
+
+
+def _extract_next_page_token(response: Any) -> str | None:
+    if isinstance(response, dict):
+        for key in ("next_page_token", "nextPageToken", "nextPage"):
+            value = response.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return None
+
+    for attr in ("next_page_token", "nextPageToken", "next_page", "nextPage"):
+        value = getattr(response, attr, None)
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 def _extract_remote_file_name(file_entry: Any) -> str | None:

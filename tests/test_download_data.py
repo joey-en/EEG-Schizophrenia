@@ -23,20 +23,40 @@ class FakeFile:
 @dataclass
 class FakeListResponse:
     files: list[FakeFile]
+    next_page_token: str | None = None
 
 
 class FakeApi:
-    def __init__(self, remote_files: list[str], payloads: dict[str, tuple[str, str]] | None = None) -> None:
+    def __init__(
+        self,
+        remote_files: list[str],
+        payloads: dict[str, tuple[str, str]] | None = None,
+        paged_remote_files: list[list[str]] | None = None,
+    ) -> None:
         self.remote_files = remote_files
         self.payloads = payloads or {}
+        self.paged_remote_files = paged_remote_files
         self.download_calls: list[tuple[str, str, Path, bool]] = []
+        self.list_calls: list[tuple[str, str | None, int | None]] = []
         self.authenticated = False
 
     def authenticate(self) -> None:
         self.authenticated = True
 
-    def dataset_list_files(self, dataset: str) -> FakeListResponse:
-        return FakeListResponse([FakeFile(name=file_name) for file_name in self.remote_files])
+    def dataset_list_files(
+        self, dataset: str, page_token: str | None = None, page_size: int | None = None
+    ) -> FakeListResponse:
+        self.list_calls.append((dataset, page_token, page_size))
+
+        if self.paged_remote_files is None:
+            return FakeListResponse([FakeFile(name=file_name) for file_name in self.remote_files])
+
+        index = int(page_token) if page_token is not None else 0
+        next_page_token = str(index + 1) if index + 1 < len(self.paged_remote_files) else None
+        return FakeListResponse(
+            [FakeFile(name=file_name) for file_name in self.paged_remote_files[index]],
+            next_page_token=next_page_token,
+        )
 
     def dataset_download_file(
         self,
@@ -224,3 +244,27 @@ def test_download_dataset_csvs_prints_download_and_skip_progress(
     assert "Listing CSV files in broach/button-tone-sz..." in captured.out
     assert "Downloading: subject_a.csv" in captured.out
     assert "Skipping: nested/subject_b.csv (already exists)" in captured.out
+
+
+def test_download_dataset_csvs_collects_all_paginated_csv_files(tmp_path: Path) -> None:
+    paged_files = [
+        [f"{i}.csv/{i}.csv" for i in range(1, 21)],
+        [f"{i}.csv/{i}.csv" for i in range(21, 41)],
+        [f"{i}.csv/{i}.csv" for i in range(41, 82)],
+    ]
+    payloads = {
+        file_name: ("csv", f"{file_name}\n")
+        for page in paged_files
+        for file_name in page
+    }
+    api = FakeApi(remote_files=[], payloads=payloads, paged_remote_files=paged_files)
+
+    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+
+    assert len(summary.all_csv_paths) == 81
+    assert len(summary.downloaded_paths) == 81
+    assert api.list_calls == [
+        (DEFAULT_DATASET, None, 100),
+        (DEFAULT_DATASET, "1", 100),
+        (DEFAULT_DATASET, "2", 100),
+    ]
