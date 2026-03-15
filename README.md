@@ -21,6 +21,19 @@ nbstripout --install
 
 The repo already includes `.gitattributes` so `*.ipynb` files use the `nbstripout` filter.
 
+For notebook work, prefer launching Jupyter from the CLI in the repo root and continuing to edit in Jupyter rather than opening the notebook directly in VS Code. That keeps the notebook kernel aligned with the same environment you use in the terminal.
+
+Example:
+
+```cmd
+conda activate DSAI4202
+jupyter notebook
+```
+
+Open the `http://localhost:...` link printed in the terminal and work from there.
+
+If you really want to use VS Code for the notebook UI, connect VS Code to the same local Jupyter server started from the CLI and make sure the notebook kernel/interpreter is set to `pyspark 4 (conda)`.
+
 ## Dataset Download
 
 After setup, configure your Kaggle token and run:
