@@ -39,7 +39,13 @@ If you really want to use VS Code for the notebook UI, connect VS Code to the sa
 After setup, configure your Kaggle token and run:
 
 ```cmd
-set KAGGLE_API_TOKEN=your_token_here
+setx KAGGLE_API_TOKEN "your_token_here"
+```
+
+Then close and reopen the terminal so the persisted variable is loaded, activate the environment again, and run:
+
+```cmd
+conda activate DSAI4202
 python src/downloadData.py
 ```
 
@@ -57,7 +63,9 @@ Kaggle API token setup instructions:
 
 ## Notes
 
-- The `set KAGGLE_API_TOKEN=...` command is for `cmd.exe`
+- Prefer `setx KAGGLE_API_TOKEN "..."` by default. `setx` persists the variable for future terminals, while `set KAGGLE_API_TOKEN=...` only exists in the current terminal session and disappears after you close it.
+- If you use `setx`, close and reopen the terminal before running Python or Jupyter.
+- `set KAGGLE_API_TOKEN=...` is still useful for a one-off temporary session in `cmd.exe`.
 - `nbstripout --install` is a one-time repo setup step, not something you need before every download
 - If you use PowerShell instead, use:
 
