@@ -5,7 +5,12 @@ __pycache__/
 
 # C extensions
 *.so
+
 .*
+!.pre-commit-config.yaml
+!.github/
+!.github/workflows/
+!.github/workflows/ci.yml
 
 # Distribution / packaging
 .Python

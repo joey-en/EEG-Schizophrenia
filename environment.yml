@@ -1,0 +1,9 @@
+name: DSAI4202
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - notebook
+  - pip:
+      - -e .[dev]

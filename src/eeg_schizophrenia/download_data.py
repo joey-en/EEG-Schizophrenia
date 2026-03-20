@@ -23,7 +23,7 @@ class KaggleDatasetApi(Protocol):
 
     def dataset_list_files(self, dataset: str, **kwargs: Any) -> Any: ...
 
-    def dataset_download_file(self, dataset: str, file_name: str, **kwargs: Any) -> Any: ...
+    def dataset_download_file( self, dataset: str, file_name: str, **kwargs: Any,) -> Any: ...
 
 
 @dataclass(slots=True)
@@ -52,7 +52,7 @@ def download_dataset_csvs(
     _authenticate_api(kaggle_api)
 
     output_root = Path(output_dir)
-    if progress:
+    if progress: 
         print(f"Listing CSV files in {dataset}...")
     remote_csv_files = _list_remote_csv_files(kaggle_api, dataset)
     if not remote_csv_files:
@@ -99,7 +99,9 @@ def download_dataset_csvs(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Download CSV files from a Kaggle dataset.")
+    parser = argparse.ArgumentParser(
+        description="Download CSV files from a Kaggle dataset."
+    )
     parser.add_argument("--dataset", default=DEFAULT_DATASET, help="Kaggle dataset slug.")
     parser.add_argument(
         "--output-dir",
@@ -136,7 +138,9 @@ def _build_kaggle_api() -> KaggleDatasetApi:
         from kaggle.api.kaggle_api_extended import KaggleApi
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "The 'kaggle' package is required. Install it with 'pip install -r requirements.txt'."
+            "The 'kaggle' package is required. Install project dependencies with "
+            "'pip install -e \".\"' or install the dev environment with "
+            "'pip install -e \".[dev]\"'."
         ) from exc
     return KaggleApi()
 
@@ -306,7 +310,8 @@ def _download_remote_csv(
             return
 
     raise FileNotFoundError(
-        f"No CSV payload for '{remote_file_name}' was produced by the Kaggle download."
+        f"No CSV payload for '{remote_file_name}' was produced by the Kaggle "
+        "download."
     )
 
 
@@ -318,7 +323,12 @@ def _call_dataset_download_file(
     force: bool,
 ) -> None:
     method = api.dataset_download_file
-    kwargs: dict[str, Any] = {"path": str(temp_dir), "force": force, "quiet": True, "unzip": False}
+    kwargs: dict[str, Any] = {
+        "path": str(temp_dir),
+        "force": force,
+        "quiet": True,
+        "unzip": False,
+    }
 
     try:
         signature = inspect.signature(method)
@@ -397,10 +407,16 @@ def _extract_csv_from_zip(archive_path: Path, remote_file_name: str, destination
     with ZipFile(archive_path) as archive:
         members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
         if not members:
-            raise FileNotFoundError(f"Archive '{archive_path.name}' did not contain any CSV files.")
+            raise FileNotFoundError(
+                f"Archive '{archive_path.name}' did not contain any CSV files."
+            )
 
-        exact_matches = [name for name in members if name.replace("\\", "/").lower() == remote_full]
-        basename_matches = [name for name in members if PurePosixPath(name).name.lower() == remote_name]
+        exact_matches = [
+            name for name in members if name.replace("\\", "/").lower() == remote_full
+        ]
+        basename_matches = [
+            name for name in members if PurePosixPath(name).name.lower() == remote_name
+        ]
 
         if exact_matches:
             member_name = exact_matches[0]
@@ -410,7 +426,8 @@ def _extract_csv_from_zip(archive_path: Path, remote_file_name: str, destination
             member_name = members[0]
         else:
             raise FileNotFoundError(
-                f"Could not identify the CSV payload for '{remote_file_name}' in '{archive_path.name}'."
+                f"Could not identify the CSV payload for '{remote_file_name}' in "
+                f"'{archive_path.name}'."
             )
 
         if destination.exists():
