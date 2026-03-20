@@ -35,6 +35,3 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F"]
-
-[tool.ruff.format]
-docstring-code-format = true

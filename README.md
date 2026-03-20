@@ -19,7 +19,7 @@ pre-commit install
 
 `nbstripout` removes notebook output before commits so `.ipynb` files stay smaller and cleaner in Git. The repo already includes `.gitattributes` so notebook files use the `nbstripout` filter after you install it once in your local clone.
 
-`pre-commit install` is used to run `ruff check`, `ruff format`, and the test suite automatically before each commit.
+`pre-commit install` is used to run `ruff check` and the test suite automatically before each commit.
 
 ### Dataset Download
 
@@ -64,5 +64,4 @@ You can also run the Python quality checks manually from the repo root:
 
 ```powershell
 ruff check .
-ruff format .
 ```
