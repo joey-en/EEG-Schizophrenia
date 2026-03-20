@@ -136,7 +136,8 @@ def _build_kaggle_api() -> KaggleDatasetApi:
         from kaggle.api.kaggle_api_extended import KaggleApi
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "The 'kaggle' package is required. Install it with 'pip install -r requirements.txt'."
+            "The 'kaggle' package is required. Install project dependencies with "
+            "'pip install -e \".[all]\"'."
         ) from exc
     return KaggleApi()
 

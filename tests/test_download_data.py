@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from src.downloadData import (
+from eeg_schizophrenia.download_data import (
     AUTH_GUIDANCE,
     DEFAULT_DATASET,
     DownloadSummary,
@@ -169,7 +169,7 @@ def test_main_uses_defaults(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Capt
             skipped_paths=[],
         )
 
-    monkeypatch.setattr("src.downloadData.download_dataset_csvs", fake_download_dataset_csvs)
+    monkeypatch.setattr("eeg_schizophrenia.download_data.download_dataset_csvs", fake_download_dataset_csvs)
 
     exit_code = main([])
     captured = capsys.readouterr()
@@ -197,7 +197,7 @@ def test_main_passes_through_custom_arguments(monkeypatch: pytest.MonkeyPatch) -
             skipped_paths=[],
         )
 
-    monkeypatch.setattr("src.downloadData.download_dataset_csvs", fake_download_dataset_csvs)
+    monkeypatch.setattr("eeg_schizophrenia.download_data.download_dataset_csvs", fake_download_dataset_csvs)
 
     exit_code = main(["--dataset", "owner/example", "--output-dir", "custom/raw", "--force"])
 

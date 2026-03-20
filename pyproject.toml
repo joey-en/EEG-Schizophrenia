@@ -1,2 +1,27 @@
+[project]
+name = "eeg-schizophrenia"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "kaggle>=1.8.3",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "nbstripout",
+]
+
+[project.scripts]
+download_eeg_schizophrenia = "eeg_schizophrenia.download_data:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
