@@ -15,11 +15,11 @@ nbstripout --install
 pre-commit install
 ```
 
-`pip install -e ".[all]"` is similar to `pip install -r requirements.txt`
+`pip install -e ".[dev]"` installs the package plus the local development tools.
 
 `nbstripout` removes notebook output before commits so `.ipynb` files stay smaller and cleaner in Git. The repo already includes `.gitattributes` so notebook files use the `nbstripout` filter after you install it once in your local clone.
 
-`pre-commit install` is used to run the test suite automatically before each commit
+`pre-commit install` is used to run `ruff check`, `ruff format`, and the test suite automatically before each commit.
 
 ### Dataset Download
 
@@ -59,3 +59,10 @@ jupyter notebook
 Open the `http://localhost:...` link printed in the terminal and edit the notebook in Jupyter.
 
 If you really want to use VS Code for the notebook UI, copy that same Jupyter link, then in VS Code select the kernel picker, choose `Existing Jupyter Server`, and paste the remote URL there.
+
+You can also run the Python quality checks manually from the repo root:
+
+```powershell
+ruff check .
+ruff format .
+```

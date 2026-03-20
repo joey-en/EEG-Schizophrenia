@@ -13,6 +13,7 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 dev = [
+    "ruff",
     "pytest",
     "nbstripout",
     "pre-commit",
@@ -26,3 +27,14 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+
+[tool.ruff.format]
+docstring-code-format = true
