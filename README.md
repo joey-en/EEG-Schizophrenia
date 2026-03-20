@@ -10,13 +10,16 @@ Open a terminal in the repo root and run:
 
 ```powershell
 conda activate DSAI4202
-pip install -e ".[all]"
+pip install -e ".[dev]"
 nbstripout --install
+pre-commit install
 ```
 
-'`pip install -e ".[all]"` is similar to `pip install -r requirements.txt`
+`pip install -e ".[all]"` is similar to `pip install -r requirements.txt`
 
 `nbstripout` removes notebook output before commits so `.ipynb` files stay smaller and cleaner in Git. The repo already includes `.gitattributes` so notebook files use the `nbstripout` filter after you install it once in your local clone.
+
+`pre-commit install` is used to run the test suite automatically before each commit
 
 ### Dataset Download
 

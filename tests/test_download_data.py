@@ -210,6 +210,21 @@ def test_main_passes_through_custom_arguments(monkeypatch: pytest.MonkeyPatch) -
     }
 
 
+def test_main_returns_error_code_and_stderr_on_failure(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_download_dataset_csvs(**kwargs: object) -> DownloadSummary:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("eeg_schizophrenia.download_data.download_dataset_csvs", fake_download_dataset_csvs)
+
+    exit_code = main([])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert captured.err.strip() == "boom"
+
+
 def test_download_dataset_csvs_surfaces_token_auth_guidance(tmp_path: Path) -> None:
     class FailingAuthApi(FakeApi):
         def authenticate(self) -> None:
@@ -268,3 +283,68 @@ def test_download_dataset_csvs_collects_all_paginated_csv_files(tmp_path: Path) 
         (DEFAULT_DATASET, "1", 100),
         (DEFAULT_DATASET, "2", 100),
     ]
+
+
+def test_download_dataset_csvs_rejects_unsafe_remote_paths(tmp_path: Path) -> None:
+    for remote_file in ("../outside.csv", "/absolute.csv"):
+        api = FakeApi(
+            remote_files=[remote_file],
+            payloads={remote_file: ("csv", "bad\n")},
+        )
+
+        with pytest.raises(ValueError, match="Unsafe Kaggle file path"):
+            download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+
+
+def test_download_dataset_csvs_stops_on_repeated_next_page_token(tmp_path: Path) -> None:
+    class RepeatingPageTokenApi(FakeApi):
+        def __init__(self) -> None:
+            super().__init__(
+                remote_files=[],
+                payloads={
+                    "page1.csv": ("csv", "1\n"),
+                    "page2.csv": ("csv", "2\n"),
+                },
+            )
+
+        def dataset_list_files(
+            self, dataset: str, page_token: str | None = None, page_size: int | None = None
+        ) -> FakeListResponse:
+            self.list_calls.append((dataset, page_token, page_size))
+            if page_token is None:
+                return FakeListResponse([FakeFile(name="page1.csv")], next_page_token="repeat")
+            return FakeListResponse([FakeFile(name="page2.csv")], next_page_token="repeat")
+
+    api = RepeatingPageTokenApi()
+
+    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+
+    assert summary.all_csv_paths == [tmp_path / "raw" / "page1.csv", tmp_path / "raw" / "page2.csv"]
+    assert api.list_calls == [
+        (DEFAULT_DATASET, None, 100),
+        (DEFAULT_DATASET, "repeat", 100),
+    ]
+
+
+def test_download_dataset_csvs_wraps_missing_payload_failures(tmp_path: Path) -> None:
+    class MissingPayloadApi(FakeApi):
+        def dataset_download_file(
+            self,
+            dataset: str,
+            file_name: str,
+            path: str | None = None,
+            force: bool = False,
+            quiet: bool = True,
+            unzip: bool = False,
+        ) -> None:
+            target_dir = Path(path or ".")
+            target_dir.mkdir(parents=True, exist_ok=True)
+            self.download_calls.append((dataset, file_name, target_dir, force))
+
+    api = MissingPayloadApi(
+        remote_files=["subject_a.csv"],
+        payloads={},
+    )
+
+    with pytest.raises(RuntimeError, match="Failed to download 'subject_a.csv'"):
+        download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
