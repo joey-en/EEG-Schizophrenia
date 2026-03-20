@@ -1,75 +1,58 @@
 # EEG-Schizophrenia
 
-Download only the `.csv` files from the Kaggle dataset `broach/button-tone-sz`.
+This project works with the Kaggle dataset `broach/button-tone-sz` and prepares the data for notebook analysis. To understand the project and the workflow, start with the data reduction notebook at `notebooks/1_data_reduction.ipynb`.
 
-## Run
+## Initial Setup
 
-Open `cmd.exe` in the repo root and run:
+### Environment Setup
 
-```cmd
+Open a terminal in the repo root and run:
+
+```powershell
 conda activate DSAI4202
-pip install -r requirements.txt
-```
-
-## Notebook Setup
-
-If you will commit `.ipynb` files, install the notebook output stripping hook once in this repo:
-
-```cmd
+pip install -e ".[all]"
 nbstripout --install
 ```
 
-The repo already includes `.gitattributes` so `*.ipynb` files use the `nbstripout` filter.
+'`pip install -e ".[all]"` is similar to `pip install -r requirements.txt`
 
-For notebook work, prefer launching Jupyter from the CLI in the repo root and continuing to edit in Jupyter rather than opening the notebook directly in VS Code. That keeps the notebook kernel aligned with the same environment you use in the terminal.
+`nbstripout` removes notebook output before commits so `.ipynb` files stay smaller and cleaner in Git. The repo already includes `.gitattributes` so notebook files use the `nbstripout` filter after you install it once in your local clone.
 
-Example:
+### Dataset Download
 
-```cmd
+Before you run the downloader, get your Kaggle API token so the command does not fail on authentication.
+
+1. Sign in to Kaggle.
+2. Open `Settings`.
+3. Go to the `API` section.
+4. Click `Generate New Token`.
+5. Copy the token value you want to use for `KAGGLE_API_TOKEN`.
+
+Full Official Kaggle auth guidance here: https://github.com/Kaggle/kagglehub#authenticate
+
+After setup, configure your Kaggle token and download the dataset:
+
+```powershell
+# Command Prompt
+setx KAGGLE_API_TOKEN "your_token_here"
+download_eeg_schizophrenia
+
+# PowerShell
+$env:KAGGLE_API_TOKEN="your_token_here"
+download_eeg_schizophrenia
+```
+
+`setx` stores the variable permanently for future terminals. After running it, close and reopen the terminal so the persisted value is available.
+
+## Start Coding
+
+Everytime you want to code, start Jupyter from the repo root with the same environment you use in the terminal:
+
+```powershell
 conda activate DSAI4202
 jupyter notebook
 ```
 
-Open the `http://localhost:...` link printed in the terminal and work from there.
+Open the `http://localhost:...` link printed in the terminal and edit the notebook in Jupyter.
 
-If you really want to use VS Code for the notebook UI, connect VS Code to the same local Jupyter server started from the CLI and make sure the notebook kernel/interpreter is set to `pyspark 4 (conda)`.
-
-## Dataset Download
-
-After setup, configure your Kaggle token and run:
-
-```cmd
-setx KAGGLE_API_TOKEN "your_token_here"
-```
-
-Then close and reopen the terminal so the persisted variable is loaded, activate the environment again, and run:
-
-```cmd
-conda activate DSAI4202
-python src/downloadData.py
-```
-
-Kaggle API token setup instructions:
-
-- Official Kaggle auth guidance: https://github.com/Kaggle/kagglehub#authenticate
-
-## What It Does
-
-- Lists the files in the Kaggle dataset first
-- Downloads only `.csv` files
-- Skips `.tar` and other non-CSV files entirely
-- Preserves nested Kaggle folders under `data/raw`
-- Prints what is downloading and what is skipped
-
-## Notes
-
-- Prefer `setx KAGGLE_API_TOKEN "..."` by default. `setx` persists the variable for future terminals, while `set KAGGLE_API_TOKEN=...` only exists in the current terminal session and disappears after you close it.
-- If you use `setx`, close and reopen the terminal before running Python or Jupyter.
-- `set KAGGLE_API_TOKEN=...` is still useful for a one-off temporary session in `cmd.exe`.
-- `nbstripout --install` is a one-time repo setup step, not something you need before every download
-- If you use PowerShell instead, use:
-
-```powershell
-$env:KAGGLE_API_TOKEN="your_token_here"
-python src/downloadData.py
-```
+If you really want to use VS Code for the notebook UI, copy that same Jupyter link, then in VS Code select the kernel picker, choose `Existing Jupyter Server`, and paste the remote URL there.
