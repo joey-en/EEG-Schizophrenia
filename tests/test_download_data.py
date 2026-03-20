@@ -104,7 +104,10 @@ def test_download_dataset_csvs_filters_non_csvs_and_preserves_folder_structure(t
     summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
 
     assert api.authenticated is True
-    assert summary.all_csv_paths == [tmp_path / "raw" / "subject_a.csv", tmp_path / "raw" / "nested" / "subject_b.csv"]
+    assert summary.all_csv_paths == [
+        tmp_path / "raw" / "subject_a.csv",
+        tmp_path / "raw" / "nested" / "subject_b.csv",
+    ]
     assert summary.downloaded_paths == summary.all_csv_paths
     assert summary.skipped_paths == []
     assert [call[1] for call in api.download_calls] == ["subject_a.csv", "nested/subject_b.csv"]
@@ -169,7 +172,10 @@ def test_main_uses_defaults(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Capt
             skipped_paths=[],
         )
 
-    monkeypatch.setattr("eeg_schizophrenia.download_data.download_dataset_csvs", fake_download_dataset_csvs)
+    monkeypatch.setattr(
+        "eeg_schizophrenia.download_data.download_dataset_csvs",
+        fake_download_dataset_csvs,
+    )
 
     exit_code = main([])
     captured = capsys.readouterr()
@@ -197,7 +203,10 @@ def test_main_passes_through_custom_arguments(monkeypatch: pytest.MonkeyPatch) -
             skipped_paths=[],
         )
 
-    monkeypatch.setattr("eeg_schizophrenia.download_data.download_dataset_csvs", fake_download_dataset_csvs)
+    monkeypatch.setattr(
+        "eeg_schizophrenia.download_data.download_dataset_csvs",
+        fake_download_dataset_csvs,
+    )
 
     exit_code = main(["--dataset", "owner/example", "--output-dir", "custom/raw", "--force"])
 
@@ -216,7 +225,10 @@ def test_main_returns_error_code_and_stderr_on_failure(
     def fake_download_dataset_csvs(**kwargs: object) -> DownloadSummary:
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("eeg_schizophrenia.download_data.download_dataset_csvs", fake_download_dataset_csvs)
+    monkeypatch.setattr(
+        "eeg_schizophrenia.download_data.download_dataset_csvs",
+        fake_download_dataset_csvs,
+    )
 
     exit_code = main([])
     captured = capsys.readouterr()
@@ -250,7 +262,10 @@ def test_download_dataset_csvs_prints_download_and_skip_progress(
 
     api = FakeApi(
         remote_files=["subject_a.csv", "nested/subject_b.csv"],
-        payloads={"subject_a.csv": ("csv", "new\n"), "nested/subject_b.csv": ("csv", "ignored\n")},
+        payloads={
+            "subject_a.csv": ("csv", "new\n"),
+            "nested/subject_b.csv": ("csv", "ignored\n"),
+        },
     )
 
     download_dataset_csvs(output_dir=tmp_path / "raw", api=api, progress=True)
@@ -319,7 +334,10 @@ def test_download_dataset_csvs_stops_on_repeated_next_page_token(tmp_path: Path)
 
     summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
 
-    assert summary.all_csv_paths == [tmp_path / "raw" / "page1.csv", tmp_path / "raw" / "page2.csv"]
+    assert summary.all_csv_paths == [
+        tmp_path / "raw" / "page1.csv",
+        tmp_path / "raw" / "page2.csv",
+    ]
     assert api.list_calls == [
         (DEFAULT_DATASET, None, 100),
         (DEFAULT_DATASET, "repeat", 100),

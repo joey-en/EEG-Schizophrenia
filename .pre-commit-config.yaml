@@ -3,8 +3,10 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: python -m ruff check --fix
-        language: system
+        entry: ruff check --fix
+        language: python
+        additional_dependencies:
+          - ruff
         types: [python]
       - id: pytest
         name: pytest
