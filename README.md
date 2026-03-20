@@ -2,6 +2,10 @@
 
 This project works with the Kaggle dataset `broach/button-tone-sz` and prepares the data for notebook analysis. To understand the project and the workflow, start with the data reduction notebook at `notebooks/1_data_reduction.ipynb`.
 
+---
+
+
+
 ## Initial Setup
 
 ### Environment Setup
@@ -20,6 +24,16 @@ pre-commit install
 `nbstripout` removes notebook output before commits so `.ipynb` files stay smaller and cleaner in Git. The repo already includes `.gitattributes` so notebook files use the `nbstripout` filter after you install it once in your local clone.
 
 `pre-commit install` is used to run `ruff check` and the test suite automatically before each commit.
+
+
+If there is no environment yet, `environment.yml` creates the Conda environment and installs the package in editable mode with the local development tools.
+
+```bash
+conda env create -f environment.yml
+conda activate DSAI4202
+nbstripout --install
+pre-commit install
+```
 
 ### Dataset Download
 
