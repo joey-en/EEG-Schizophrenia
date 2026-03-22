@@ -1,0 +1,32 @@
+{
+  "config": {
+    "features": "data\\processed\\all_csv_agg",
+    "demographics": "data\\raw\\demographic.csv",
+    "target_column": "group",
+    "include_sax": true,
+    "test_size": 0.2,
+    "random_state": 42,
+    "cv_splits": 5
+  },
+  "data_summary": {
+    "rows": 11527,
+    "subjects": 40,
+    "numeric_feature_count": 281,
+    "sax_feature_count": 70,
+    "train_subjects": 32,
+    "test_subjects": 8
+  },
+  "holdout_metrics": {
+    "accuracy": 0.480225988700565,
+    "balanced_accuracy": 0.43264125365137257,
+    "f1": 0.2599009900990099,
+    "roc_auc": 0.3503590852605588
+  },
+  "cross_validation_metrics": {
+    "accuracy": 0.4946824947948098,
+    "balanced_accuracy": 0.4673128107918654,
+    "f1": 0.33371680643037455,
+    "roc_auc": 0.48245678340985165
+  },
+  "classification_report": "              precision    recall  f1-score   support\n\n           0     0.5793    0.6211    0.5995      1441\n           1     0.2778    0.2442    0.2599       860\n\n    accuracy                         0.4802      2301\n   macro avg     0.4285    0.4326    0.4297      2301\nweighted avg     0.4666    0.4802    0.4726      2301\n"
+}
