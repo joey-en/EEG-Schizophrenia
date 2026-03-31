@@ -11,6 +11,8 @@ from typing import Any, Protocol, Sequence
 from zipfile import ZipFile
 
 DEFAULT_DATASET = "broach/button-tone-sz"
+SECONDARY_DATASET = "broach/buttontonesz2"
+DEFAULT_DATASETS = (DEFAULT_DATASET, SECONDARY_DATASET)
 DEFAULT_OUTPUT_DIR = Path("data/raw")
 AUTH_GUIDANCE = (
     "Set KAGGLE_API_TOKEN (recommended) or place the token in ~/.kaggle/access_token. "
@@ -33,10 +35,15 @@ class DownloadSummary:
     all_csv_paths: list[Path]
     downloaded_paths: list[Path]
     skipped_paths: list[Path]
+    datasets: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.datasets:
+            self.datasets = (self.dataset,)
 
 
 def download_dataset_csvs(
-    dataset: str = DEFAULT_DATASET,
+    dataset: str | Sequence[str] = DEFAULT_DATASETS,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
     force: bool = False,
     api: KaggleDatasetApi | None = None,
@@ -52,57 +59,69 @@ def download_dataset_csvs(
     _authenticate_api(kaggle_api)
 
     output_root = Path(output_dir)
-    if progress: 
-        print(f"Listing CSV files in {dataset}...")
-    remote_csv_files = _list_remote_csv_files(kaggle_api, dataset)
-    if not remote_csv_files:
-        raise ValueError(f"No CSV files were found in Kaggle dataset '{dataset}'.")
+    datasets = _coerce_datasets(dataset)
 
     all_csv_paths: list[Path] = []
     downloaded_paths: list[Path] = []
     skipped_paths: list[Path] = []
+    seen_destinations: set[Path] = set()
 
-    for remote_name in remote_csv_files:
-        destination = output_root.joinpath(*PurePosixPath(remote_name).parts)
-        all_csv_paths.append(destination)
+    for current_dataset in datasets:
+        if progress:
+            print(f"Listing CSV files in {current_dataset}...")
+        remote_csv_files = _list_remote_csv_files(kaggle_api, current_dataset)
+        if not remote_csv_files:
+            raise ValueError(f"No CSV files were found in Kaggle dataset '{current_dataset}'.")
 
-        if destination.exists() and not force:
-            if progress:
-                print(f"Skipping: {remote_name} (already exists)")
-            skipped_paths.append(destination)
-            continue
+        for remote_name in remote_csv_files:
+            destination = output_root.joinpath(*PurePosixPath(remote_name).parts)
+            if destination in seen_destinations:
+                continue
+            seen_destinations.add(destination)
+            all_csv_paths.append(destination)
 
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            if progress:
-                print(f"Downloading: {remote_name}")
-            _download_remote_csv(
-                api=kaggle_api,
-                dataset=dataset,
-                remote_file_name=remote_name,
-                destination=destination,
-                force=force,
-            )
-        except Exception as exc:
-            raise RuntimeError(
-                f"Failed to download '{remote_name}' from Kaggle dataset '{dataset}'."
-            ) from exc
-        downloaded_paths.append(destination)
+            if destination.exists() and not force:
+                if progress:
+                    print(f"Skipping: {remote_name} (already exists)")
+                skipped_paths.append(destination)
+                continue
+
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                if progress:
+                    print(f"Downloading: {remote_name}")
+                _download_remote_csv(
+                    api=kaggle_api,
+                    dataset=current_dataset,
+                    remote_file_name=remote_name,
+                    destination=destination,
+                    force=force,
+                )
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to download '{remote_name}' from Kaggle dataset '{current_dataset}'."
+                ) from exc
+            downloaded_paths.append(destination)
 
     return DownloadSummary(
-        dataset=dataset,
+        dataset=", ".join(datasets),
         output_dir=output_root,
         all_csv_paths=all_csv_paths,
         downloaded_paths=downloaded_paths,
         skipped_paths=skipped_paths,
+        datasets=datasets,
     )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Download CSV files from a Kaggle dataset."
+        description="Download CSV files from one or more Kaggle datasets."
     )
-    parser.add_argument("--dataset", default=DEFAULT_DATASET, help="Kaggle dataset slug.")
+    parser.add_argument(
+        "--dataset",
+        action="append",
+        help="Kaggle dataset slug. Repeat the flag to download multiple datasets.",
+    )
     parser.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR.as_posix(),
@@ -114,10 +133,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Re-download CSV files even if they already exist locally.",
     )
     args = parser.parse_args(argv)
+    dataset_selection = tuple(args.dataset) if args.dataset else DEFAULT_DATASETS
 
     try:
         summary = download_dataset_csvs(
-            dataset=args.dataset,
+            dataset=dataset_selection,
             output_dir=args.output_dir,
             force=args.force,
             progress=True,
@@ -127,10 +147,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     print(
-        f"Dataset '{summary.dataset}': downloaded {len(summary.downloaded_paths)} CSV file(s), "
+        f"Dataset(s) '{summary.dataset}': downloaded {len(summary.downloaded_paths)} CSV file(s), "
         f"skipped {len(summary.skipped_paths)} existing file(s) into '{summary.output_dir}'."
     )
     return 0
+
+
+def _coerce_datasets(dataset: str | Sequence[str]) -> tuple[str, ...]:
+    if isinstance(dataset, str):
+        candidates = [dataset]
+    else:
+        candidates = list(dataset)
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        current = candidate.strip()
+        if not current:
+            continue
+        if current in seen:
+            continue
+        seen.add(current)
+        normalized.append(current)
+
+    if not normalized:
+        raise ValueError("At least one Kaggle dataset slug is required.")
+
+    return tuple(normalized)
 
 
 def _build_kaggle_api() -> KaggleDatasetApi:

@@ -47,7 +47,7 @@ Before you run the downloader, get your Kaggle API token so the command does not
 
 Full Official Kaggle auth guidance here: https://github.com/Kaggle/kagglehub#authenticate
 
-After setup, configure your Kaggle token and download the dataset:
+After setup, configure your Kaggle token and download the datasets:
 
 ```powershell
 # Command Prompt
@@ -60,6 +60,8 @@ download_eeg_schizophrenia
 ```
 
 `setx` stores the variable permanently for future terminals. After running it, close and reopen the terminal so the persisted value is available.
+
+By default, `download_eeg_schizophrenia` downloads both supported Kaggle datasets into `data/raw`. You can repeat `--dataset` if you want to override that list manually.
 
 ## Start Coding
 

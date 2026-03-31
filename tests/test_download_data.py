@@ -9,7 +9,9 @@ import pytest
 from eeg_schizophrenia.download_data import (
     AUTH_GUIDANCE,
     DEFAULT_DATASET,
+    DEFAULT_DATASETS,
     DownloadSummary,
+    SECONDARY_DATASET,
     download_dataset_csvs,
     main,
 )
@@ -32,10 +34,14 @@ class FakeApi:
         remote_files: list[str],
         payloads: dict[str, tuple[str, str]] | None = None,
         paged_remote_files: list[list[str]] | None = None,
+        dataset_remote_files: dict[str, list[str]] | None = None,
+        dataset_payloads: dict[str, dict[str, tuple[str, str]]] | None = None,
     ) -> None:
         self.remote_files = remote_files
         self.payloads = payloads or {}
         self.paged_remote_files = paged_remote_files
+        self.dataset_remote_files = dataset_remote_files or {}
+        self.dataset_payloads = dataset_payloads or {}
         self.download_calls: list[tuple[str, str, Path, bool]] = []
         self.list_calls: list[tuple[str, str | None, int | None]] = []
         self.authenticated = False
@@ -47,6 +53,10 @@ class FakeApi:
         self, dataset: str, page_token: str | None = None, page_size: int | None = None
     ) -> FakeListResponse:
         self.list_calls.append((dataset, page_token, page_size))
+
+        if dataset in self.dataset_remote_files:
+            remote_files = self.dataset_remote_files[dataset]
+            return FakeListResponse([FakeFile(name=file_name) for file_name in remote_files])
 
         if self.paged_remote_files is None:
             return FakeListResponse([FakeFile(name=file_name) for file_name in self.remote_files])
@@ -71,7 +81,8 @@ class FakeApi:
         target_dir.mkdir(parents=True, exist_ok=True)
         self.download_calls.append((dataset, file_name, target_dir, force))
 
-        payload_type, content = self.payloads[file_name]
+        payloads = self.dataset_payloads.get(dataset, self.payloads)
+        payload_type, content = payloads[file_name]
         basename = PurePosixPath(file_name).name
         if payload_type == "csv":
             (target_dir / basename).write_text(content, encoding="utf-8")
@@ -101,7 +112,7 @@ def test_download_dataset_csvs_filters_non_csvs_and_preserves_folder_structure(t
         },
     )
 
-    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+    summary = download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
     assert api.authenticated is True
     assert summary.all_csv_paths == [
@@ -126,7 +137,7 @@ def test_download_dataset_csvs_skips_existing_files_by_default(tmp_path: Path) -
         payloads={"nested/subject_b.csv": ("csv", "new\n")},
     )
 
-    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+    summary = download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
     assert summary.downloaded_paths == []
     assert summary.skipped_paths == [existing_file]
@@ -144,7 +155,12 @@ def test_download_dataset_csvs_force_redownloads_existing_files(tmp_path: Path) 
         payloads={"subject_a.csv": ("csv", "new\n")},
     )
 
-    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api, force=True)
+    summary = download_dataset_csvs(
+        dataset=DEFAULT_DATASET,
+        output_dir=tmp_path / "raw",
+        api=api,
+        force=True,
+    )
 
     assert summary.downloaded_paths == [existing_file]
     assert summary.skipped_paths == []
@@ -156,7 +172,35 @@ def test_download_dataset_csvs_raises_when_no_csv_files_are_listed(tmp_path: Pat
     api = FakeApi(remote_files=["archive.tar", "notes.txt"])
 
     with pytest.raises(ValueError, match="No CSV files"):
-        download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+        download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
+
+
+def test_download_dataset_csvs_downloads_both_default_datasets(tmp_path: Path) -> None:
+    api = FakeApi(
+        remote_files=[],
+        dataset_remote_files={
+            DEFAULT_DATASET: ["subject_a.csv"],
+            SECONDARY_DATASET: ["subject_b.csv"],
+        },
+        dataset_payloads={
+            DEFAULT_DATASET: {"subject_a.csv": ("csv", "a\n")},
+            SECONDARY_DATASET: {"subject_b.csv": ("csv", "b\n")},
+        },
+    )
+
+    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+
+    assert summary.datasets == DEFAULT_DATASETS
+    assert summary.all_csv_paths == [
+        tmp_path / "raw" / "subject_a.csv",
+        tmp_path / "raw" / "subject_b.csv",
+    ]
+    assert [call[:2] for call in api.download_calls] == [
+        (DEFAULT_DATASET, "subject_a.csv"),
+        (SECONDARY_DATASET, "subject_b.csv"),
+    ]
+    assert (tmp_path / "raw" / "subject_a.csv").read_text(encoding="utf-8") == "a\n"
+    assert (tmp_path / "raw" / "subject_b.csv").read_text(encoding="utf-8") == "b\n"
 
 
 def test_main_uses_defaults(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -182,7 +226,7 @@ def test_main_uses_defaults(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Capt
 
     assert exit_code == 0
     assert recorded == {
-        "dataset": DEFAULT_DATASET,
+        "dataset": DEFAULT_DATASETS,
         "output_dir": "data/raw",
         "force": False,
         "progress": True,
@@ -208,11 +252,21 @@ def test_main_passes_through_custom_arguments(monkeypatch: pytest.MonkeyPatch) -
         fake_download_dataset_csvs,
     )
 
-    exit_code = main(["--dataset", "owner/example", "--output-dir", "custom/raw", "--force"])
+    exit_code = main(
+        [
+            "--dataset",
+            "owner/example",
+            "--dataset",
+            "owner/example-two",
+            "--output-dir",
+            "custom/raw",
+            "--force",
+        ]
+    )
 
     assert exit_code == 0
     assert recorded == {
-        "dataset": "owner/example",
+        "dataset": ("owner/example", "owner/example-two"),
         "output_dir": "custom/raw",
         "force": True,
         "progress": True,
@@ -245,10 +299,10 @@ def test_download_dataset_csvs_surfaces_token_auth_guidance(tmp_path: Path) -> N
     api = FailingAuthApi(remote_files=["subject_a.csv"])
 
     with pytest.raises(RuntimeError, match="KAGGLE_API_TOKEN"):
-        download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+        download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
     with pytest.raises(RuntimeError, match="access_token"):
-        download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+        download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
     assert "KAGGLE_API_TOKEN" in AUTH_GUIDANCE
 
@@ -268,7 +322,12 @@ def test_download_dataset_csvs_prints_download_and_skip_progress(
         },
     )
 
-    download_dataset_csvs(output_dir=tmp_path / "raw", api=api, progress=True)
+    download_dataset_csvs(
+        dataset=DEFAULT_DATASET,
+        output_dir=tmp_path / "raw",
+        api=api,
+        progress=True,
+    )
     captured = capsys.readouterr()
 
     assert "Listing CSV files in broach/button-tone-sz..." in captured.out
@@ -289,7 +348,7 @@ def test_download_dataset_csvs_collects_all_paginated_csv_files(tmp_path: Path) 
     }
     api = FakeApi(remote_files=[], payloads=payloads, paged_remote_files=paged_files)
 
-    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+    summary = download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
     assert len(summary.all_csv_paths) == 81
     assert len(summary.downloaded_paths) == 81
@@ -308,7 +367,7 @@ def test_download_dataset_csvs_rejects_unsafe_remote_paths(tmp_path: Path) -> No
         )
 
         with pytest.raises(ValueError, match="Unsafe Kaggle file path"):
-            download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+            download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
 
 def test_download_dataset_csvs_stops_on_repeated_next_page_token(tmp_path: Path) -> None:
@@ -332,7 +391,7 @@ def test_download_dataset_csvs_stops_on_repeated_next_page_token(tmp_path: Path)
 
     api = RepeatingPageTokenApi()
 
-    summary = download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+    summary = download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
 
     assert summary.all_csv_paths == [
         tmp_path / "raw" / "page1.csv",
@@ -365,4 +424,4 @@ def test_download_dataset_csvs_wraps_missing_payload_failures(tmp_path: Path) ->
     )
 
     with pytest.raises(RuntimeError, match="Failed to download 'subject_a.csv'"):
-        download_dataset_csvs(output_dir=tmp_path / "raw", api=api)
+        download_dataset_csvs(dataset=DEFAULT_DATASET, output_dir=tmp_path / "raw", api=api)
