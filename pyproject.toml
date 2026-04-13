@@ -15,7 +15,6 @@ build-backend = "setuptools.build_meta"
 dev = [
     "ruff",
     "pytest",
-    "nbstripout",
     "pre-commit",
 ]
 
