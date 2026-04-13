@@ -18,6 +18,11 @@ build/
 develop-eggs/
 dist/
 data/raw/
+data/demographic.csv
+data/processed/all_csv_agg_ALLLL/
+data/processed/feature_engineered/final_modeling_table/
+data/processed/preprocessed_final_modeling_table.zip
+data/processed/preprocessed_final_modeling_table/
 downloads/
 eggs/
 .eggs/
@@ -84,6 +89,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+notebooks/artifacts/
 
 # IPython
 profile_default/
