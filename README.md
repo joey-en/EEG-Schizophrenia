@@ -135,7 +135,7 @@ The preprocessing stage prepared the engineered trial-level table for modeling.
 
 Important clarification: **PCA is dimensionality reduction, not original-feature selection.** It creates new principal components from the combined feature set rather than selecting a literal subset of the original columns.
 
-The train/test split was performed at the **subject level** to avoid leakage between trials from the same person.
+The train/validation/test split was performed at the **subject level** to avoid leakage between trials from the same person. Baseline model comparison and hyperparameter tuning were carried out on the validation split, while the final held-out test split was reserved for the selected Random Forest model.
 
 ## Modeling
 
@@ -162,20 +162,31 @@ PR-AUC is especially useful here because the classes are not perfectly balanced 
 
 ## Results
 
-The table below summarizes the main model comparison from the modeling notebook.
+The table below summarizes the baseline model comparison on the **validation set** from the modeling notebook.
 
 | Model | Recall | Precision | PR-AUC |
 |------|--------|-----------|--------|
-| **Random Forest** | **0.692** | 0.593 | 0.793 |
-| Logistic Regression | 0.588 | 0.651 | **0.840** |
-| Decision Tree | 0.586 | 0.623 | 0.731 |
-| Naive Bayes | 0.583 | **0.740** | 0.564 |
-| Multilayer Perceptron | 0.561 | 0.606 | 0.726 |
-| Linear SVC | 0.550 | 0.600 | 0.782 |
+| **Random Forest** | **0.594** | 0.495 | 0.666 |
+| Logistic Regression | 0.558 | **0.606** | **0.734** |
+| Decision Tree | 0.561 | 0.567 | 0.686 |
+| Multilayer Perceptron | 0.564 | 0.579 | 0.651 |
+| Linear SVC | 0.527 | 0.560 | 0.658 |
+| Naive Bayes | 0.456 | 0.488 | 0.665 |
 
-**Best operational model:** Random Forest, because it achieved the highest recall, which was the primary selection criterion.
+**Best validation model:** Random Forest, because it achieved the highest recall, which was the primary selection criterion.
 
-**Best PR-AUC:** Logistic Regression, indicating strong ranking performance even though its recall was lower than Random Forest.
+**Best validation PR-AUC:** Logistic Regression, indicating stronger ranking performance even though its recall was lower than Random Forest.
+
+For the final held-out evaluation, the selected Random Forest model achieved:
+
+- **Train recall:** 0.704
+- **Train precision:** 0.778
+- **Train PR-AUC:** 0.909
+- **Test recall:** 0.495
+- **Test precision:** 0.350
+- **Test PR-AUC:** 0.509
+
+This gap between training and test performance suggests that the selected Random Forest model captures useful signal, but still shows signs of overfitting on unseen subjects.
 
 ## Key Insights
 
