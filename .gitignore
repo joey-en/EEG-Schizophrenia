@@ -21,6 +21,7 @@ data/raw/
 data/demographic.csv
 data/processed/all_csv_agg_ALLLL/
 data/processed/feature_engineered/final_modeling_table/
+data/processed/pca_final_modeling_table/
 data/processed/preprocessed_final_modeling_table.zip
 data/processed/preprocessed_final_modeling_table/
 downloads/
