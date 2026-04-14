@@ -90,7 +90,11 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-notebooks/artifacts/
+# Keep generated notebook artifacts out of Git by default, but track published EDA figures.
+notebooks/artifacts/*
+!notebooks/artifacts/eda_visualizations/
+notebooks/artifacts/eda_visualizations/*
+!notebooks/artifacts/eda_visualizations/*.png
 
 # IPython
 profile_default/
